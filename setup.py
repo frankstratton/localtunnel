@@ -6,7 +6,7 @@ from localtunnel import __version__
 
 setup(
     name='localtunnel',
-    version='0.6.2beta',
+    version='0.6.1',
     author='Jeff Lindsay',
     author_email='progrium@gmail.com',
     description='Magically expose a local port to the Internet',
