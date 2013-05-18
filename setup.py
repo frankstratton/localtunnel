@@ -17,8 +17,11 @@ setup(
     ],
     url="http://github.com/progrium/localtunnel",
     packages=find_packages(),
-    install_requires=['eventlet', 'requests', 'argparse'],
+    install_requires=['eventlet', 'requests', 'argparse', 'yunomi'],
     data_files=[],
+    dependency_links = [
+        'https://github.com/progrium/yunomi/tarball/master#egg=yunomi'
+    ],
     entry_points={
         'console_scripts': [
             'localtunnel-beta = localtunnel.client:run',
