@@ -22,6 +22,8 @@ def recv_message(socket):
         data = socket.recv(length)
         message = json.loads(data)
         return message
+    except KeyboardInterrupt:
+        raise
     except:
         return
 

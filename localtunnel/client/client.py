@@ -68,47 +68,54 @@ def start_client(**kwargs):
 
     client = util.client_name()
     target = util.parse_address(kwargs['target'])[0]
-    try:
-        control = eventlet.connect(backend)
-        if use_ssl:
-            control = eventlet.wrap_ssl(control, server_side=False, **ssl_opts)
-        control.sendall(protocol.version)
-        protocol.send_message(control,
-            protocol.control_request(
-                name=name,
-                client=client,
-        ))
-        reply = protocol.recv_message(control)
-        if reply and 'control' in reply:
-            reply = reply['control']
 
-            def maintain_proxy_backend_pool():
-                pool = eventlet.greenpool.GreenPool(reply['concurrency'])
-                while True:
-                    pool.spawn_n(open_proxy_backend,
-                            backend, target, name, client, use_ssl, ssl_opts)
+    shutting_down = False
 
-            proxying = eventlet.spawn(maintain_proxy_backend_pool)
+    while not shutting_down:
+        try:
+            control = eventlet.connect(backend)
+            if use_ssl:
+                control = eventlet.wrap_ssl(control, server_side=False, **ssl_opts)
+            control.sendall(protocol.version)
+            protocol.send_message(control,
+                protocol.control_request(
+                    name=name,
+                    client=client,
+            ))
+            reply = protocol.recv_message(control)
+            if reply and 'control' in reply:
+                reply = reply['control']
 
-            print "  {0}".format(reply['banner'])
-            print "  Port {0} is now accessible from https://{1} ...\n".format(
-                    target[1], reply['host'])
+                def maintain_proxy_backend_pool():
+                    pool = eventlet.greenpool.GreenPool(reply['concurrency'])
+                    while True:
+                        pool.spawn_n(open_proxy_backend,
+                                backend, target, name, client, use_ssl, ssl_opts)
 
-            try:
-                while True:
-                    message = protocol.recv_message(control)
-                    assert message == protocol.control_ping()
-                    protocol.send_message(control, protocol.control_pong())
-            except (IOError, AssertionError):
-                proxying.kill()
+                proxying = eventlet.spawn(maintain_proxy_backend_pool)
 
-        elif reply and 'error' in reply:
-            print "  ERROR: {0}".format(reply['message'])
-        else:
-            print "  ERROR: Unexpected server reply."
-            print "         Make sure you have the latest version of the client."
-    except KeyboardInterrupt:
-        pass
+                print "  {0}".format(reply['banner'])
+                print "  Port {0} is now accessible from https://{1} ...\n".format(
+                        target[1], reply['host'])
+
+                try:
+                    while True:
+                        message = protocol.recv_message(control)
+                        assert message == protocol.control_ping()
+                        protocol.send_message(control, protocol.control_pong())
+                except (IOError, AssertionError):
+                    proxying.kill()
+
+            elif reply and 'error' in reply:
+                print "  ERROR: {0}".format(reply['message'])
+            else:
+                print "  ERROR: Unexpected server reply."
+                print "         Make sure you have the latest version of the client."
+        except KeyboardInterrupt:
+            shutting_down = True
+            return
+
+        time.sleep(3)
 
 def run():
     parser = argparse.ArgumentParser(
